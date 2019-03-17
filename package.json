@@ -43,7 +43,8 @@
   "homepage": "https://github.com/MikhailEm1995/telegram-charts#readme",
   "browserslist": "> 0.25%, not dead",
   "dependencies": {
-    "@babel/polyfill": "^7.2.5"
+    "@babel/polyfill": "^7.2.5",
+    "rxjs": "^6.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.3.4",

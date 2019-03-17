@@ -1,4 +1,4 @@
-import { LINE, X } from '_constants/chart-types';
+import { LINE, X } from '_constants/charts';
 import { NO_X_AXIS, INVALID_COLUMN, INVALID_CONFIG } from '_constants/errors';
 
 import { extractDateInfoFromMS } from '_js/utils/formatTime';
@@ -52,8 +52,10 @@ export default class ConfigFormatter {
             .map(([key, name]) => {
                 const values = columns.find(column => column[0] === key).slice(1);
                 return {
-                    name, values, isVisible: true,
-                    color: colors[key], type: types[key],
+                    name,
+                    values,
+                    color: colors[key],
+                    type: types[key],
                     max: Math.max.apply(null, values),
                     min: Math.min.apply(null, values)
                 };
@@ -82,11 +84,5 @@ export default class ConfigFormatter {
 
     get graphs() {
         return this._graphs;
-    }
-
-    toggleGraphVisibility(graphIdx) {
-        if (graphIdx > this._graphs.length || graphIdx < 0) return;
-
-        this._graphs[graphIdx].isVisible = !this._graphs[graphIdx].isVisible;
     }
 }
