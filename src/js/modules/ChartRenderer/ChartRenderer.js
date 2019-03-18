@@ -118,15 +118,34 @@ export default class ChartRenderer {
     render() {
         const { width, height } = this._CONTAINER.getBoundingClientRect();
         let children = [];
-        const polylines = this._getGraphs();
+        const graphs = this._getGraphs();
+        this._setGraphsNodes(graphs);
         const lines = this._getGrid({ width, height });
-        const yValues = this._renderYValues({ height });
-        const xValues = this._renderXValues({ width, height });
+        const yValues = this._getYTexts({ height });
+        const xValues = this._getXTexts({ width, height });
 
-        children = lines.concat(polylines).concat(yValues).concat(xValues);
+        children = lines.concat(graphs).concat(yValues).concat(xValues);
 
         const svg = createSvg({ id: 'test', width, height, children });
         this._CONTAINER.appendChild(svg);
+    }
+
+    _getGraphs() {
+        return Object.entries(this._COORDS).map(([id, coords]) => {
+            const color = this._GRAPHS[id].color;
+            const formattedCoords = coords.map(obj => [obj.x, obj.y]);
+            const polyline = createGraphPolyline({ id, coords: formattedCoords, color });
+
+            polyline.setAttribute('transform', `scale(1, ${this._scales[id]})`);
+        
+            return polyline;
+        });
+    }
+
+    _setGraphsNodes(graphs) {
+        graphs.forEach((graph) => {
+            this._GRAPHS[graph.id].node = graph;
+        });
     }
 
     _getGrid({ width, height }) {
@@ -144,19 +163,7 @@ export default class ChartRenderer {
         return lines.map(createLine);
     }
 
-    _getGraphs() {
-        return Object.entries(this._COORDS).map(([id, coords]) => {
-            const color = this._GRAPHS[id].color;
-            const formattedCoords = coords.map(obj => [obj.x, obj.y]);
-            const polyline = createGraphPolyline({ id, coords: formattedCoords, color });
-
-            polyline.setAttribute('transform', `scale(1, ${this._scales[id]})`);
-
-            return polyline;
-        });
-    }
-
-    _renderYValues({ height }) {
+    _getYTexts({ height }) {
         const Y_OFFSET = this._PADDING_Y.bottom;
         const INTERVAL = (height - Y_OFFSET) / this._Y_INTERVALS_NUMBER;
         const texts = this._yValues.map((text, i) => {
@@ -169,7 +176,7 @@ export default class ChartRenderer {
         return texts.map(createText);
     }
 
-    _renderXValues({ width, height }) {
+    _getXTexts({ width, height }) {
         const intervals = this._X_INTERVALS_NUMBER;
         const leftPad = 25;
         const rightPad = 30;
@@ -187,9 +194,41 @@ export default class ChartRenderer {
         return texts.map(createText);
     }
 
-    setOffsetFactor(val) {}
+    setGraphInvisible(graphId) {
+        const graph = this._GRAPHS[graphId];
+        graph.isVisible = false;
+        graph.node.style.display = 'none';
 
-    setScaleFactor(val) {}
+        if (graph.max === this._currentMax) {
+            this.update();
+        }
+    }
+
+    setGRaphVisible(graphId) {
+        const graph = this._GRAPHS[graphId];
+        graph.isVisible = true;
+        graph.node.style.display = 'inline';
+
+        if (graph.max > this._currentMax) {
+            this.update();
+        }
+    }
+
+    setOffsetFactor(val) {
+        this._offsetFactor = val;
+
+        this.update();
+    }
+
+    setScaleFactor(val) {
+        this._scaleFactor = val;
+
+        this.update();
+    }
+
+    update() {
+        
+    }
 }
 
 const xs = new Array(20).fill(0).map((_, i) => {
