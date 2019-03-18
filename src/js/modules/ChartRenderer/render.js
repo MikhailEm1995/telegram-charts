@@ -1,9 +1,21 @@
+import { attrs } from '../../utils/dom';
+
+const CHART_CLASSNAME = 'chart';
+const GRAPH_CLASSNAME = `${CHART_CLASSNAME}__graph`;
+const LINE_CLASSNAME = `${CHART_CLASSNAME}__line`;
+const TEXT_CLASSNAME = `${CHART_CLASSNAME}__text`;
+
 export const createSvg = ({ id, width, height, children }) => {
-    const svg = document.createElement('svg');
-    svg.setAttribute('id', String(id));
-    svg.setAttribute('width', String(width));
-    svg.setAttribute('height', String(height));
-    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
+    attrs(svg, {
+        'id': String(id),
+        'class': CHART_CLASSNAME,
+        'version': '1.1',
+        'shape-rendering': 'auto',
+        'viewBox': `0 0 ${width} ${height}`,
+        'preserveAspectRatio': 'xMidYMin meet'
+    });
 
     children.forEach((child) => {
         svg.appendChild(child);
@@ -13,19 +25,47 @@ export const createSvg = ({ id, width, height, children }) => {
 };
 
 export const createGraphPolyline = ({ id, color, coords }) => {
-    const polyline = document.createElement('polyline');
-    polyline.setAttribute('id', String(id));
-    polyline.setAttribute('vector-effect', 'non-scaling-stroke');
-    polyline.setAttribute('points', coords.join(' '));
-    polyline.setAttribute('stroke', color);
-    polyline.setAttribute('stroke-width', '2px');
+    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+
+    attrs(polyline, {
+        'id': String(id),
+        'class': GRAPH_CLASSNAME,
+        'vector-effect': 'non-scaling-stroke',
+        'points': coords.join(' '),
+        'stroke': color,
+        'fill': 'none',
+        'stroke-width': '2.3px'
+    });
+
     return polyline;
 };
 
-export const renderXRuler = () => {};
+export const createLine = ({ color, x1, y1, x2, y2 }) => {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
 
-export const renderYRuler = () => {};
+    attrs(line, {
+        'class': LINE_CLASSNAME,
+        'stroke': color,
+        'stroke-width': '1px',
+        'opacity': '0.5',
+        'x1': x1,
+        'y1': y1,
+        'x2': x2,
+        'y2': y2
+    });
 
-export const renderChartMap = () => {};
+    return line;
+};
 
-export const renderChartMapWindow = () => {};
+export const createText = ({ text, x, y }) => {
+    const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+
+    attrs(textEl, {
+        'class': TEXT_CLASSNAME,
+        'x': x,
+        'y': y
+    });
+    textEl.textContent = text;
+
+    return textEl;
+};
