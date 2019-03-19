@@ -1,10 +1,12 @@
-import {createGraphPolyline, createSvg, createLine, createText} from "./render";
+import {createGraphPolyline, createSvg, createGroup, createLine, createText} from "./render";
 
 // _graphs { [id]: { isVisible, color, translate, scaleX, scaleY, max, coords, values } }
 
 import './chart.pcss';
 
 export default class ChartRenderer {
+    CHART_ID = (Date.now() + Math.round(Math.random() * 1000)).toString(36);
+
     // predefined constants
     _PADDING_X = { left: 0, right: 0 };
     _PADDING_Y = { top: 0, bottom: 30 };
@@ -17,6 +19,7 @@ export default class ChartRenderer {
     _GRAPHS = {};
     _CONTAINER = null;
     _XS = [];
+    _MIN_SCALE_FACTOR = null;
 
     _currentMax = -Infinity;
     _scales = {};
@@ -26,10 +29,15 @@ export default class ChartRenderer {
     _yValues = [];
 
     // Elements
-    _POLYLINES = [];
-    _X_TEXTS = [];
-    _Y_TEXTS = [];
-    _CIRCLES = [];
+    _X_TEXTS = {
+        'original': { isVisible: true, group: null },
+        'clone': { isVisible: false, group: null }
+    };
+    _Y_TEXTS = {
+        'original': { isVisible: true, group: null },
+        'clone': { isVisible: false, group: null }
+    };
+    _CIRCLES = {};
     _INFO_POPUP = null;
 
     constructor({ container, xs, graphs }) {
@@ -38,6 +46,7 @@ export default class ChartRenderer {
         this._XS = xs;
         this._GRAPHS = graphs;
         this._MAX = this._getGraphsMaxValue(graphs);
+        this._MIN_SCALE_FACTOR = this._X_INTERVALS_NUMBER / xs.length;
         this._currentMax = this._MAX;
         this._scales = this._getCurrentScales(graphs, this._currentMax);
         this._COORDS = this._getCoordsForAllGraphs({
@@ -119,14 +128,17 @@ export default class ChartRenderer {
         const { width, height } = this._CONTAINER.getBoundingClientRect();
         let children = [];
         const graphs = this._getGraphs();
-        this._setGraphsNodes(graphs);
-        const lines = this._getGrid({ width, height });
+        const grid = this._getGrid({ width, height });
         const yValues = this._getYTexts({ height });
         const xValues = this._getXTexts({ width, height });
 
-        children = lines.concat(graphs).concat(yValues).concat(xValues);
+        this._setGraphsNodes(graphs);
+        this._setYTexts(yValues);
+        this._setXTexts(xValues);
 
-        const svg = createSvg({ id: 'test', width, height, children });
+        children = [grid].concat(graphs).concat(yValues).concat(xValues);
+
+        const svg = createSvg({ id: this.CHART_ID, width, height, children });
         this._CONTAINER.appendChild(svg);
     }
 
@@ -137,7 +149,7 @@ export default class ChartRenderer {
             const polyline = createGraphPolyline({ id, coords: formattedCoords, color });
 
             polyline.setAttribute('transform', `scale(1, ${this._scales[id]})`);
-        
+            
             return polyline;
         });
     }
@@ -146,6 +158,16 @@ export default class ChartRenderer {
         graphs.forEach((graph) => {
             this._GRAPHS[graph.id].node = graph;
         });
+    }
+
+    _setYTexts([originalGroup, cloneGroup]) {
+        this._Y_TEXTS.original.group = originalGroup;
+        this._Y_TEXTS.clone.group = cloneGroup;
+    }
+
+    _setXTexts([originalGroup, cloneGroup]) {
+        this._X_TEXTS.original.group = originalGroup;
+        this._X_TEXTS.clone.group = cloneGroup;
     }
 
     _getGrid({ width, height }) {
@@ -160,20 +182,27 @@ export default class ChartRenderer {
             };
         });
 
-        return lines.map(createLine);
+        return createGroup({ id: `${this.CHART_ID}_grid`, children: lines.map(createLine) });
     }
 
     _getYTexts({ height }) {
         const Y_OFFSET = this._PADDING_Y.bottom;
         const INTERVAL = (height - Y_OFFSET) / this._Y_INTERVALS_NUMBER;
-        const texts = this._yValues.map((text, i) => {
-            return {
+        const texts = this._yValues.map((text, i) => ({
                 text,
                 x: 0, y: height - (INTERVAL * i + Y_OFFSET + 10)
-            };
-        });
+        }));
+        const hiddenTexts = new Array(6).fill('').map((text, i) => (createText({
+            text,
+            x: 0, y: height - (INTERVAL * i + Y_OFFSET + 10)
+        })));
+        const hiddenTextsGroup = createGroup({ id: `${this.CHART_ID}_ysClone`, children: hiddenTexts });
+        hiddenTextsGroup.setAttribute('style', 'fill:transparent;translateY(-50px)');
 
-        return texts.map(createText);
+        return [
+            createGroup({ id: `${this.CHART_ID}_ys`, children: texts.map(createText) }),
+            hiddenTextsGroup
+        ];
     }
 
     _getXTexts({ width, height }) {
@@ -184,14 +213,23 @@ export default class ChartRenderer {
 
         // TODO придумать формулу получше
         const INTERVAL = width * (1 + intervals) / Math.pow(intervals, 2) - (rightPad + leftPad) / intervals;
-        const texts = this._xValues.map((text, i) => {
-            return {
-                text,
-                y: height - bottomPad, x: INTERVAL * i + leftPad
-            };
-        });
+        const texts = this._xValues.map((text, i) => (createText({
+            text,
+            y: height - bottomPad,
+            x: INTERVAL * i + leftPad
+        })));
+        const hiddenTexts = new Array(6).fill('').map((text, i) => (createText({
+            text,
+            y: height - bottomPad,
+            x: INTERVAL * i + leftPad
+        })));
+        const hiddenTextsGroup = createGroup({ id: `${this.CHART_ID}_xsClone`, children: hiddenTexts });
+        hiddenTextsGroup.setAttribute('style', 'fill:transparent;transform:translateX(-100px)');
 
-        return texts.map(createText);
+        return [
+            createGroup({ id: `${this.CHART_ID}_xs`, children: texts }),
+            hiddenTextsGroup
+        ];
     }
 
     setGraphInvisible(graphId) {
@@ -204,30 +242,76 @@ export default class ChartRenderer {
         }
     }
 
-    setGRaphVisible(graphId) {
+    setGraphVisible(graphId) {
         const graph = this._GRAPHS[graphId];
         graph.isVisible = true;
         graph.node.style.display = 'inline';
 
         if (graph.max > this._currentMax) {
-            this.update();
+            this._updateGraphsVisibility();
         }
     }
 
     setOffsetFactor(val) {
         this._offsetFactor = val;
 
-        this.update();
+        this._updateOffset();
     }
 
     setScaleFactor(val) {
         this._scaleFactor = val;
 
-        this.update();
+        this._updateScale();
     }
 
-    update() {
+    getMinScale() {
+        return this._MIN_SCALE_FACTOR;
+    }
+
+    _updateGraphsVisibility() {
+        const currentMax = this._getCurrentMax();
+    
+        if (currentMax > this._currentMax) {
+            this._currentMax = currentMax;
+            this._scales = this._getCurrentScales(this._GRAPHS, currentMax);
+            this._yValues = this._getYValues(this._Y_INTERVALS_NUMBER, this._currentMax);
+
+            this._redrawYValues();
+        }
+    }
+
+    _redrawYValues() {
+        Object.entries(this._Y_TEXTS).forEach((key, { isVisible, group }) => {
+            const onAnimationEnd = () => {
+                group.transform.getItem(0).setTranslate(0, -50);
+                group.removeEventListener('animationend', onAnimationEnd);
+            };
+            if (isVisible) {
+                group.addEventListener('animationend', onAnimationEnd);
+                group.transform.getItem(0).setTranslate(0, 50);
+                group.style.opacity = 0;
+            } else {
+                group.transform.getItem(0).setTranslate(0, 0);
+                group.style.opacity = 1;
+            }
+
+            this._Y_TEXTS[key].isVisible = !this._Y_TEXTS[key].isVisible;
+        });
+    }
+
+    _updateOffset() {
         
+    }
+
+    _updateScale() {
+
+    }
+
+    _getCurrentMax() {
+        return this._GRAPHS.reduce(
+            (acc, { max, isVisible }) => isVisible ? (acc > max ? acc : max) : acc,
+            this._currentMax
+        );
     }
 }
 

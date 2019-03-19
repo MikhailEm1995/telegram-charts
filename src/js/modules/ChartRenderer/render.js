@@ -17,11 +17,19 @@ export const createSvg = ({ id, width, height, children }) => {
         'preserveAspectRatio': 'xMidYMin meet'
     });
 
-    children.forEach((child) => {
-        svg.appendChild(child);
-    });
+    children.forEach((child) => { svg.appendChild(child) });
 
     return svg;
+};
+
+export const createGroup = ({ id, children }) => {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    attrs(group, { 'id': String(id) });
+
+    children.forEach((child) => { group.appendChild(child) });
+
+    return group;
 };
 
 export const createGraphPolyline = ({ id, color, coords }) => {
